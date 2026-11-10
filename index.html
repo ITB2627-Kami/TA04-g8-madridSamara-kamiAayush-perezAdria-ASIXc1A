@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Incidencias (4192 Respuestas)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --primary: #2563eb;
+            --text-color: #1e293b;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .header h1 {
+            margin: 0 0 5px 0;
+            color: #0f172a;
+        }
+        .kpi-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        .kpi-card {
+            background: var(--card-bg);
+            padding: 15px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            min-width: 180px;
+        }
+        .kpi-card .num {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        .kpi-card .label {
+            font-size: 13px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 20px;
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .card h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: #334155;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
+        }
+        .chart-container {
+            position: relative;
+            height: 320px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Dashboard de Incidencias</h1>
+        <p>Análisis interactivo de <strong>4192</strong> respuestas recibidas en (incidencies.xml)</p>
+    </div>
+
+    <div class="kpi-container">
+        <div class="kpi-card">
+            <div class="num">4192</div>
+            <div class="label">Total Respuestas</div>
+        </div>
+        <div class="kpi-card">
+            <div class="num" style="color: #16a34a;">4074</div>
+            <div class="label">Válidas (97.2% )</div>
+        </div>
+        <div class="kpi-card">
+            <div class="num" style="color: #dc2626;">118</div>
+            <div class="label">Filtradas / Ruido (2.8% )</div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h3>🖥️ Top Equipamiento Afectado</h3>
+            <div class="chart-container"><canvas id="chartEquip"></canvas></div>
+        </div>
+
+        <div class="card">
+            <h3>📍 Top 10 Ubicaciones con Más Incidencias</h3>
+            <div class="chart-container"><canvas id="chartUbic"></canvas></div>
+        </div>
+
+        <div class="card">
+            <h3>⚠️ Categorías de Fallo Principal</h3>
+            <div class="chart-container"><canvas id="chartCat"></canvas></div>
+        </div>
+
+        <div class="card">
+            <h3>⚡ Niveles de Impacto Operativo</h3>
+            <div class="chart-container"><canvas id="chartImp"></canvas></div>
+        </div>
+    </div>
+
+    <script>
+        const eqLabels = ["Pizarra electr\u00f3nica", "Monitor", "Teclado", "Ordenador", "Rat\u00f3n", "Conexi\u00f3n", "Cable"];
+        const eqValues = [662, 628, 615, 612, 585, 489, 483];
+
+        const ubLabels = ["Aula 202", "AulaInform\u00e1tica 1", "Laboratorio 2", "Clase 101", "Clase 108", "Sala de profesores", "Planta 1 - Sala 8", "Aula 232", "Aula 175", "Aula 146"];
+        const ubValues = [108, 91, 90, 87, 86, 86, 77, 27, 27, 26];
+
+        const catLabels = ["Sin imagen / Pantalla negra", "Sin conexi\u00f3n a Red / Internet", "Sin sonido / Problema de audio", "No enciende / Sin alimentaci\u00f3n", "Rat\u00f3n no funcional", "Teclado no funcional", "Error de software / Programa bloqueado", "Contrasenya desconeguda / No pot accedir a compte", "Problema con la pizarra", "Black Screen with Sound Active and Wrong Native Resolution Detected"];
+        const catValues = [514, 501, 489, 488, 483, 476, 376, 376, 367, 1];
+
+        const impLabels = ["Urgente", "Dificulta la actividad pero hay alternativa", "No urgente"];
+        const impValues = [1364, 1362, 1348];
+
+        // Gráfico 1: Equipamiento
+        new Chart(document.getElementById('chartEquip'), {
+            type: 'bar',
+            data: {
+                labels: eqLabels,
+                datasets: [{
+                    label: 'Incidencias',
+                    data: eqValues,
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 6
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        // Gráfico 2: Ubicaciones (Horizontal)
+        new Chart(document.getElementById('chartUbic'), {
+            type: 'bar',
+            data: {
+                labels: ubLabels,
+                datasets: [{
+                    label: 'Incidencias',
+                    data: ubValues,
+                    backgroundColor: '#10b981',
+                    borderRadius: 6
+                }]
+            },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        // Gráfico 3: Categoría Fallo (Horizontal)
+        new Chart(document.getElementById('chartCat'), {
+            type: 'bar',
+            data: {
+                labels: catLabels,
+                datasets: [{
+                    label: 'Incidencias',
+                    data: catValues,
+                    backgroundColor: '#f59e0b',
+                    borderRadius: 6
+                }]
+            },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        // Gráfico 4: Impacto (Doughnut)
+        new Chart(document.getElementById('chartImp'), {
+            type: 'doughnut',
+            data: {
+                labels: impLabels,
+                datasets: [{
+                    data: impValues,
+                    backgroundColor: ['#f97316', '#eab308', '#ef4444', '#8b5cf6', '#06b6d4']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    </script>
+</body>
+</html>
