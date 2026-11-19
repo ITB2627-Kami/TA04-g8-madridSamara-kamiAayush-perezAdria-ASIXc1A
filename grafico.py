@@ -6,12 +6,83 @@ import webbrowser
 import os
 
 # ==============================================================================
-# CONFIGURACIÓN: Cambia aquí el nombre de tu nuevo archivo XML
+# CONFIGURACIÓN: Cambia aquí los nombres de los archivos
 # ==============================================================================
 ARCHIVO_XML = "incidencies.xml"      # Ejemplo: Pon aquí 'mis_4000_respuestas.xml'
 ARCHIVO_HTML_SALIDA = "dashboard_4000.html"
+ARCHIVO_JSON_SALIDA = "incidencies.json"
 
-def generar_dashboard_html(fitxer_xml, fitxer_sortida):
+
+def obtener_id(registro):
+    """Busca el campo ID (sin importar mayúsculas/minúsculas) para detectar duplicados."""
+    for clave, valor in registro.items():
+        if clave.strip().lower() in ('id', 'id_incidencia', 'incidencia_id'):
+            return str(valor).strip()
+    # Respaldo por si el XML no incluye una etiqueta explícita llamada ID
+    return f"{registro.get('Fecha_de_la_incidencia', '')}_{registro.get('Correo_electrónico', '')}_{registro.get('Descripción_detallada', '')[:30]}"
+
+
+def guardar_json(incidencies_xml, fitxer_json):
+    """Convierte las incidencias a formato JSON y gestiona si el archivo ya existe."""
+    nuevas_incidencias = []
+    for inc in incidencies_xml:
+        registro = {
+            child.tag: (child.text.strip() if child.text else "")
+            for child in inc
+        }
+        nuevas_incidencias.append(registro)
+
+    # Caso 1: El archivo no existe -> se crea directamente
+    if not os.path.exists(fitxer_json):
+        with open(fitxer_json, 'w', encoding='utf-8') as f:
+            json.dump(nuevas_incidencias, f, indent=4, ensure_ascii=False)
+        print(f"💾 Archivo '{fitxer_json}' creado con {len(nuevas_incidencias)} incidencias.")
+        return
+
+    # Caso 2: El archivo ya existe -> preguntar al usuario qué hacer
+    print(f"\n⚠️ El archivo '{fitxer_json}' ya existe.")
+    print("¿Qué deseas hacer?")
+    print("  1. Sobrescribirlo (borra el contenido anterior y escribe los datos nuevos)")
+    print("  2. Añadir las nuevas incidencias (conserva las existentes y evita IDs duplicados)")
+
+    while True:
+        opcion = input("Selecciona una opción (1 o 2): ").strip()
+        if opcion in ('1', '2'):
+            break
+        print("❌ Opción no válida. Por favor, escribe 1 o 2.")
+
+    if opcion == '1':
+        with open(fitxer_json, 'w', encoding='utf-8') as f:
+            json.dump(nuevas_incidencias, f, indent=4, ensure_ascii=False)
+        print(f"💾 Archivo '{fitxer_json}' sobrescrito con {len(nuevas_incidencias)} incidencias.")
+
+    elif opcion == '2':
+        try:
+            with open(fitxer_json, 'r', encoding='utf-8') as f:
+                existentes = json.load(f)
+                if not isinstance(existentes, list):
+                    existentes = []
+        except (json.JSONDecodeError, ValueError):
+            existentes = []
+
+        ids_existentes = {obtener_id(item) for item in existentes}
+        afegides = 0
+
+        for inc in nuevas_incidencias:
+            id_actual = obtener_id(inc)
+            if id_actual not in ids_existentes:
+                existentes.append(inc)
+                ids_existentes.add(id_actual)
+                afegides += 1
+
+        with open(fitxer_json, 'w', encoding='utf-8') as f:
+            json.dump(existentes, f, indent=4, ensure_ascii=False)
+
+        duplicadas = len(nuevas_incidencias) - afegides
+        print(f"💾 Se han añadido {afegides} incidencias nuevas a '{fitxer_json}' ({duplicadas} duplicadas omitidas). Total: {len(existentes)}.")
+
+
+def generar_dashboard_html(fitxer_xml, fitxer_sortida, fitxer_json):
     if not os.path.exists(fitxer_xml):
         print(f"❌ Error: No se encuentra el archivo '{fitxer_xml}'. Revisa el nombre.")
         return
@@ -64,6 +135,9 @@ def generar_dashboard_html(fitxer_xml, fitxer_sortida):
 
     total_valides = len(valides)
     total_erronies = len(erronies)
+
+    # Guardar las incidencias válidas en incidencies.json
+    guardar_json(valides, fitxer_json)
 
     # 3. Agrupaciones estadísticas (Escalado a Top 10 para grandes volúmenes de datos)
     eq_data = Counter([i.findtext('Tipo_de_equipamiento', 'N/A') for i in valides]).most_common(10)
@@ -286,5 +360,6 @@ def generar_dashboard_html(fitxer_xml, fitxer_sortida):
     # Abre el archivo en el navegador por defecto (Windows, Mac o Linux)
     webbrowser.open('file://' + os.path.realpath(fitxer_sortida))
 
+
 if __name__ == '__main__':
-    generar_dashboard_html(ARCHIVO_XML, ARCHIVO_HTML_SALIDA)
+    generar_dashboard_html(ARCHIVO_XML, ARCHIVO_HTML_SALIDA, ARCHIVO_JSON_SALIDA)
