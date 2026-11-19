@@ -44,6 +44,48 @@ except Exception as e:
     print(f"❌ ERROR INESPERADO AL LER EL CSV: {e}")
     sys.exit(1)
 
+# 2.5 Nueva comprobación: Verificar si el XML de destino ya existe
+destino_xml = ARCHIVO_XML
+
+if os.path.exists(ARCHIVO_XML):
+    print(f"⚠️  AVISO DE FICHERO EXISTENTE:")
+    print(f"   El archivo '{ARCHIVO_XML}' ya existe en esta carpeta.")
+    
+    while True:
+        opcion = input("   ¿Qué deseas hacer? [S]obreescribir / [N]uevo archivo / [C]ancelar: ").strip().lower()
+        
+        if opcion in ('s', 'sobreescribir'):
+            break
+            
+        elif opcion in ('n', 'nuevo'):
+            # Generar sugerencia automática libre (ej. incidencies_1.xml)
+            base, ext = os.path.splitext(ARCHIVO_XML)
+            contador = 1
+            while os.path.exists(f"{base}_{contador}{ext}"):
+                contador += 1
+            sugerencia = f"{base}_{contador}{ext}"
+            
+            nuevo_nombre = input(f"   Introduce el nuevo nombre (pulsa Enter para usar '{sugerencia}'): ").strip()
+            
+            if not nuevo_nombre:
+                destino_xml = sugerencia
+                break
+            else:
+                if not nuevo_nombre.lower().endswith('.xml'):
+                    nuevo_nombre += '.xml'
+                if os.path.exists(nuevo_nombre):
+                    print(f"   ❌ El archivo '{nuevo_nombre}' también existe. Elige otro nombre.\n")
+                    continue
+                destino_xml = nuevo_nombre
+                break
+                
+        elif opcion in ('c', 'cancelar'):
+            print("\n🛑 Operación cancelada por el usuario. No se ha modificado ningún archivo.")
+            sys.exit(0)
+            
+        else:
+            print("   ⚠️ Opción no válida. Escribe 'S' para sobreescribir, 'N' para crear uno nuevo o 'C' para cancelar.\n")
+
 # 3. Conversión a XML (solo si la validación ha sido 100% correcta)
 try:
     raiz = ET.Element('incidencies')
@@ -58,9 +100,9 @@ try:
             campo.text = str(valor) if valor is not None else ""
 
     arbol = ET.ElementTree(raiz)
-    arbol.write(ARCHIVO_XML, encoding='utf-8', xml_declaration=True)
+    arbol.write(destino_xml, encoding='utf-8', xml_declaration=True)
     
-    print(f"✅ Validación correcta. Se han grabado {len(filas)} registros en '{ARCHIVO_XML}'.")
+    print(f"\n✅ Validación correcta. Se han grabado {len(filas)} registros en '{destino_xml}'.")
 
 except Exception as e:
     print(f"❌ ERROR EN LA GENERACIÓN DEL XML: {e}")
